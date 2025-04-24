@@ -70,6 +70,6 @@ Este trabajo fue elaborado por:
 
 ## Licencia
 
-Este proyecto se comparte bajo la licencia MIT, salvo que se indique lo contrario en archivos específicos.
+Este proyecto se comparte bajo la licencia GNU GENERAL PUBLIC LICENSE
 ```
 
