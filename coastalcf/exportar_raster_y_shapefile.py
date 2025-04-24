@@ -5,7 +5,7 @@ from esa_snappy import ProductIO
 import os
 import numpy as np
 
-def convert_to_8bit_gdal(input_path, output_path, nodata_val=-9999.0):
+def convert_to_8bit_gdal(input_path, output_path, nodata_val=-1):
     """Convierte un GeoTIFF a 8 bits usando GDAL, conservando metadatos y nodata explícito."""
     dataset = gdal.Open(input_path, gdal.GA_ReadOnly)
     if dataset is None:
@@ -13,6 +13,9 @@ def convert_to_8bit_gdal(input_path, output_path, nodata_val=-9999.0):
 
     band = dataset.GetRasterBand(1)
     data = band.ReadAsArray().astype(np.float32)
+    
+    # Reemplaza valores menores a 0 por 0
+    data[data < -2] = 0
 
     # Evita escalar valores nodata
     data_valid = data[data != nodata_val]

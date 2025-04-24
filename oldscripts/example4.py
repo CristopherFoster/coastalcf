@@ -24,12 +24,13 @@ y = 14091
 #Final de la región de interés (ROI) en coordenadas de píxeles.
 width = 1355
 height = 897
-
+"""
 x=23
 y = 13524
 #Final de la región de interés (ROI) en coordenadas de píxeles.
 width = 1667
-height = 1617
+height = 1667
+"""
 #x = y = width = height = None
 #23 13524 1667 1617
 # Defininir parámetros para el operador GLCM.
@@ -109,7 +110,7 @@ if terrain1 is None:
     raise RuntimeError("Terrain flattening failed.")
 
 # Guardar el producto completo, con todas sus bandas
-output_path_terrain = os.path.join(output_directory, "terrain1")
+#output_path_terrain = os.path.join(output_directory, "terrain1")
 #ProductIO.writeProduct(terrain1, output_path_terrain, "GeoTIFF")
 #******************x********************************************************
 # --- 7. Cálculo de texturas GLCM : glcmOp / glcm [textura]
@@ -117,6 +118,7 @@ print("Calculating texture...")
 textura = clf.glcmOp().glcm(terrain1, para)
 if textura is None:
     raise RuntimeError("GLCM texture calculation failed.")
+
 # Guardar el producto completo, con todas sus bandas
 output_path_terrain = os.path.join(output_directory, "glcm")
 glcmc = clf.geometricCorrection(textura, toPrint=True)
@@ -130,7 +132,6 @@ print("Performing water detection...")
 productos_binarios, umbrales = clf.WDBThreshold(
     textura=textura,
     sentinel_1_path=sentinel_1_path,
-    output_directory=output_directory,
     window_size=31,
     k=0.2,     # extra param para Niblack/Sauvola
     r=None     # extra param para Sauvola
@@ -149,7 +150,6 @@ productos_para_graficar = {
 print("Applying terrain correction to all thresholded products...")
 
 
-print("Applying terrain correction to all thresholded products...")
 
 productos_binarios_corrected = {}
 for nombre, (producto, threshold) in productos_para_graficar.items():
@@ -159,8 +159,6 @@ for nombre, (producto, threshold) in productos_para_graficar.items():
         print(f"⚠️  No se pudo corregir el producto: {nombre}")
     else:
         productos_binarios_corrected[nombre] = (corregido, threshold)
-
-
 
 
 
@@ -176,12 +174,12 @@ for nombre, producto in productos_binarios_corrected.items():
 
     # Generar rutas de salida usando tus funciones reutilizables
     raster_path = clf.generate_raster_path(sentinel_1_path, output_directory)
-    shapefile_path = clf.generate_shapefile_path(sentinel_1_path, output_directory)
+    shapefile_path = clf.generate_shapefile_path(sentinel_1_path, output_directorysh)
 
     print(f"Procesando producto corregido: {nombre}")
     
     # Exportar raster y shapefile
-    #clf.exportar_raster_y_shapefile(producto, raster_path, shapefile_path)
+    clf.exportar_raster_y_shapefile(producto, raster_path, shapefile_path)
 
 
 """

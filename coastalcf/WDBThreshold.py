@@ -209,7 +209,6 @@ def WDBThreshold(
 def WDBThreshold(
     textura,
     sentinel_1_path,
-    output_directory,
     window_size=31,
     k=0.2,
     r=None

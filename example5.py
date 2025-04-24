@@ -19,7 +19,7 @@ from coastalcf.wbplots import histograma_threshold_metrics
 ***************************************************************************
 ---------------------------------------------------------------------------
 """
-
+#Tener Cuidado a Partir del Paso 7/8
 
 
 # --- 1. Define la región de interés (ROI) para el subconjunto y la ruta del producto.
@@ -30,13 +30,14 @@ x=32
 y = 14091
 #Final de la región de interés (ROI) en coordenadas de píxeles.
 width = 1355
-height = 897
+height = 1355#897
 
 x=23
 y = 13524
 #Final de la región de interés (ROI) en coordenadas de píxeles.
 width = 1667
-height = 1617
+height = 1667
+
 #x = y = width = height = None
 #23 13524 1667 1617
 # Defininir parámetros para el operador GLCM.
@@ -127,19 +128,48 @@ if textura is None:
 # Guardar el producto completo, con todas sus bandas
 output_path_terrain = os.path.join(output_directory, "glcm")
 #glcmc = clf.geometricCorrection(textura, toPrint=True)
+#ProductIO.writeProduct(glcmc, output_path_terrain, "GeoTIFF")
 
+#!!!!!!!!!!!!!!!!!!!!!
+
+
+#**************************************************************************
+
+# 8. Umbralización (Método Sauvola) : waterDetectionBinarization [product]
+print("Performing water detection...")
+#waterDetection = clf.waterDetectionBinarization(textura, sentinel_1_path, output_directory)
+productos_binarios, umbrales = clf.WDBThreshold(
+    textura=textura,
+    sentinel_1_path=sentinel_1_path,
+    window_size=31,
+    k=0.2,     # extra param para Niblack/Sauvola
+    r=None     # extra param para Sauvola
+)
+
+productos_para_graficar = {
+    "flood_otsu": (productos_binarios["flood_otsu"], umbrales["otsu"]),
+    "flood_niblack": (productos_binarios["flood_niblack"], umbrales["niblack"]),
+    "flood_sauvola": (productos_binarios["flood_sauvola"], umbrales["sauvola"]),
+    "flood_li": (productos_binarios["flood_li"], umbrales["li"]),
+}
+#**************************************************************************
+#**************************************************************************
+#**************************************************************************
+# 8.5
+#band_names = ["flood_otsu", "flood_niblack", "flood_sauvola", "flood_li"]
 producto_gc = clf.geometricCorrection(textura, toPrint=True)
+
 tmp_tif   = os.path.join(output_directory, "glcm_tmp.tif")     # float32
 final_tif = os.path.join(output_directory, "glcm_8bit.tif")    # uint8
 final_shp = os.path.join(output_directory, "glcm.shp")
 # --- 2 · Exportar el Product corregido a GeoTIFF (float) ---
 print(f"Escribiendo GeoTIFF temporal: {tmp_tif}")
-ProductIO.writeProduct(producto_gc, tmp_tif, "GeoTIFF")
+clf.replace_nodata_with_minus1(producto_gc, output_path_terrain)
 
 
 
 # --- 3 · Convertir a 8 bits con tu propia función ---
-convert_to_8bit_gdal(tmp_tif, final_tif, nodata_val=-9999.0)
+convert_to_8bit_gdal(tmp_tif, final_tif, nodata_val=-1)
 print(f"GeoTIFF 8 bits escrito: {final_tif}")
 
 # --- 4 · Borrar el temporal (opcional) ---
@@ -153,37 +183,12 @@ print("Proceso terminado ✔️")
 
 
 
-from coastalcf.exportar_raster_y_shapefile import convert_to_8bit_gdal
-#ProductIO.writeProduct(glcmc, output_path_terrain, "GeoTIFF")
-#!!!!!!!!!!!!!!!!!!!!!
-
-
+#**************************************************************************
+#**************************************************************************
 #**************************************************************************
 
-# 8. Umbralización (Método Sauvola) : waterDetectionBinarization [product]
-print("Performing water detection...")
-#waterDetection = clf.waterDetectionBinarization(textura, sentinel_1_path, output_directory)
-productos_binarios, umbrales = clf.WDBThreshold(
-    textura=textura,
-    sentinel_1_path=sentinel_1_path,
-    output_directory=output_directory,
-    window_size=31,
-    k=0.2,     # extra param para Niblack/Sauvola
-    r=None     # extra param para Sauvola
-)
-
-productos_para_graficar = {
-    "flood_otsu": (productos_binarios["flood_otsu"], umbrales["otsu"]),
-    "flood_niblack": (productos_binarios["flood_niblack"], umbrales["niblack"]),
-    "flood_sauvola": (productos_binarios["flood_sauvola"], umbrales["sauvola"]),
-    "flood_li": (productos_binarios["flood_li"], umbrales["li"]),
-}
-#**************************************************************************
-#band_names = ["flood_otsu", "flood_niblack", "flood_sauvola", "flood_li"]
 
 # 9. Corrección geométrica: geometricCorrection [corrected]
-print("Applying terrain correction to all thresholded products...")
-
 
 print("Applying terrain correction to all thresholded products...")
 
@@ -205,6 +210,18 @@ from coastalcf.wbplots import aplicar_correccion_y_grid
 aplicar_correccion_y_grid(productos_binarios_corrected, output_directory, sentinel_id)
 
 
+
+
+
+
+
+
+
+
+
+
+
+"""
 ##---------------------------------------
 # 1) Abrir el GeoTIFF en modo solo-lectura
 tif_path = final_tif
@@ -235,6 +252,7 @@ for nombre, producto in productos_binarios_corrected.items():
     
     # Exportar raster y shapefile
     #clf.exportar_raster_y_shapefile(producto, raster_path, shapefile_path)
+"""
 
 
 """

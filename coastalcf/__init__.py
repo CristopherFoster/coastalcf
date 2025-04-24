@@ -15,6 +15,7 @@ from .get_sentinel_fecha_id import get_sentinel_fecha_id
 from .wbplots import plot_binary_map, plot_histogram
 from .plot_thresholds import plot_thresholds
 from .WDBThreshold import WDBThreshold
+from .replace_nodata_with_minus1 import replace_nodata_with_minus1
 
 __all__ = [
     "readMetadata",
@@ -34,5 +35,6 @@ __all__ = [
     "plot_binary_map",
     "plot_histogram",
     "plot_thresholds",
-    "WDBThreshold"
+    "WDBThreshold",
+    "replace_nodata_with_minus1"
 ]
