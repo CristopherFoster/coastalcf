@@ -22,6 +22,10 @@ Este repositorio contiene un ejemplo completo de procesamiento de imágenes Sent
 10. Creación de rutas y máscara binaria  
 11. Exportación del raster y shapefile final
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/d42e1b0d-32a4-4cd2-aea7-4b60d0e23ff3" alt="image" />
+</p>
+
 ## Módulos principales
 
 La funcionalidad se organiza en los siguientes métodos disponibles en el paquete:
@@ -70,6 +74,6 @@ Este trabajo fue elaborado por:
 
 ## Licencia
 
-Este proyecto se comparte bajo la licencia MIT, salvo que se indique lo contrario en archivos específicos.
+Este proyecto se comparte bajo la licencia GNU GENERAL PUBLIC LICENSE
 ```
 
