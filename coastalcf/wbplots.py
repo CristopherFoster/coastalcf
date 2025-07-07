@@ -49,10 +49,11 @@ from matplotlib.ticker import FormatStrFormatter
 import os
 from esa_snappy import PixelPos, GeoPos
 
+"""
 def aplicar_correccion_y_grid(productos_binarios, output_directory, sentinel_id=""):
-    """
-    Muestra en un grid los productos corregidos geométricamente con ejes lat/lon y colores personalizados.
-    """
+  
+    #Muestra en un grid los productos corregidos geométricamente con ejes lat/lon y colores personalizados.
+  
     # Colores: -1 = blanco (nodata), 0 = deeppink (agua), 1 = goldenrod (tierra)
     colors = ['white', 'deeppink', 'goldenrod']
     cmap = ListedColormap(colors)
@@ -128,6 +129,142 @@ def aplicar_correccion_y_grid(productos_binarios, output_directory, sentinel_id=
     plt.show(block=False)
     plt.pause(2)
     plt.close()
+"""
+
+def aplicar_correccion_y_grid(productos_binarios, output_directory, sentinel_id="", img_db_product=None, vh_extent=None):
+    """
+    Muestra en un grid los productos corregidos geométricamente con ejes lat/lon y colores personalizados.
+    También grafica la imagen original VH (img_db_product) si se proporciona.
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import ListedColormap, BoundaryNorm
+    from matplotlib.ticker import FormatStrFormatter
+    import os
+    from esa_snappy import PixelPos, GeoPos
+    titles=['Otsu', 'Niblack', 'Sauvola', 'MCET', 'MCET Iterative']
+    def plot_img_db_valid(img_db_product, sentinel_id="", extent=None, ax=None):
+        """
+        Grafica un producto SNAP (img_db_valid) en dB en un axis dado, usando escala de 0 a 25 dB.
+        """
+        # Obtener banda
+        band = img_db_product.getBand('img_db_valid_VH')
+        w, h = band.getRasterWidth(), band.getRasterHeight()
+
+        # Leer pixeles
+        img_db_data = np.zeros(w * h, np.float32)
+        band.readPixels(0, 0, w, h, img_db_data)
+        img_db_data = img_db_data.reshape((h, w))
+
+        # --- Plot ---
+        im = ax.imshow(img_db_data, cmap='gray', vmin=0, vmax=25,
+                    extent=extent if extent else None, aspect='auto')
+
+        ax.set_title(f'Imagen VH en dB {sentinel_id}', fontsize=12)
+        ax.set_xlabel('Longitud', fontsize=10)
+        ax.set_ylabel('Latitud', fontsize=10)
+
+        ax.tick_params(axis='x', rotation=45)
+        ax.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+
+        if extent:
+            ax.set_xlim(extent[0], extent[1])
+            ax.set_ylim(extent[2], extent[3])
+
+        #cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        #cbar.set_label('Valor (dB)', fontsize=10)
+
+
+    # --- Colores de máscara: -1 = blanco (nodata), 0 = cyan (agua), 1 = darkorange (tierra)
+    colors = ['white', 'purple', 'pink']
+    cmap = ListedColormap(colors)
+    bounds = [-1.5, -0.5, 0.5, 1.5]
+    norm = BoundaryNorm(bounds, cmap.N)
+
+    num = len(productos_binarios)
+    extra_panel = 1 if img_db_product is not None else 0
+    total_plots = num + extra_panel
+
+    ncols = 2
+    nrows = int(np.ceil(total_plots / ncols))
+
+    fig, axes = plt.subplots(nrows, ncols, figsize=(10, 5 * nrows))
+    axes = axes.flatten()
+
+    # --- Primero graficamos img_db_product en axes[0]
+    idx = 0
+    if img_db_product is not None:
+        plot_img_db_valid(img_db_product, sentinel_id, vh_extent, ax=axes[idx])
+        idx += 1
+
+    # --- Luego ploteamos los productos binarios
+    for i, (nombre, (producto, threshold_val)) in enumerate(productos_binarios.items()):
+        band_name_match = [b for b in producto.getBandNames() if nombre in b]
+        if not band_name_match:
+            print(f"⚠️ No se encontró una banda correspondiente a: {nombre}")
+            continue
+
+        band = producto.getBand(band_name_match[0])
+        w, h = band.getRasterWidth(), band.getRasterHeight()
+        data = np.zeros(w * h, np.float32)
+        band.readPixels(0, 0, w, h, data)
+        data = data.reshape((h, w))
+
+        extent = None
+        try:
+            geo = producto.getSceneGeoCoding()
+            upper_left = GeoPos()
+            lower_right = GeoPos()
+
+            geo.getGeoPos(PixelPos(0, 0), upper_left)
+            geo.getGeoPos(PixelPos(w - 1, h - 1), lower_right)
+
+            lon_0, lat_0 = upper_left.lon, upper_left.lat
+            lon_w, lat_h = lower_right.lon, lower_right.lat
+            extent = [lon_0, lon_w, lat_h, lat_0]
+            print(extent)
+        except Exception as e:
+            print(f"⚠️ No se pudo obtener geo-referencias para {nombre}: {e}")
+
+        axes[idx].imshow(data, cmap=cmap, norm=norm,
+                         extent=extent if extent else None, aspect='auto')
+
+        metodo = nombre.replace("flood_", "").capitalize()
+        title = titles[i]                       # << título correspondiente
+        axes[idx].set_title(f"{title} Threshold") # ← ¡aquí el formato!
+        #axes[idx].set_title(f'{metodo} ({sentinel_id})')
+        axes[idx].set_xlabel("Longitud")
+        axes[idx].set_ylabel("Latitud")
+        axes[idx].tick_params(axis='x', rotation=45)
+        axes[idx].xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+
+        if extent:
+            axes[idx].set_xlim(extent[0], extent[1])
+            axes[idx].set_ylim(extent[2], extent[3])
+
+        axes[idx].text(
+            0.02, 0.02,
+            f"Threshold = {threshold_val:.4f}",
+            transform=axes[idx].transAxes,
+            fontsize=10,
+            color='black',
+            verticalalignment='bottom',
+            bbox=dict(facecolor='white', edgecolor='gray', boxstyle='round,pad=0.3', alpha=0.7)
+        )
+        idx += 1
+
+    # --- Apagar subplots vacíos
+    for j in range(idx, len(axes)):
+        axes[j].axis('off')
+
+    fig.tight_layout()
+
+    plt.savefig(os.path.join(output_directory, f"{sentinel_id}_ThresholdsCompare.png"), dpi=300)
+    plt.show(block=False)
+    plt.pause(2)
+    plt.close()
+    
     
     
 def histograma_threshold_metrics(
@@ -230,10 +367,15 @@ def histograma_threshold_metrics(
     plt.grid(alpha=0.2, linestyle=":")
 
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
+    plt.pause(2)
+    plt.close()
 
     # --- 5. Devolver thresholds y scores por si los necesitas ---
     return thresholds, scores
+
+
+
 
 
 def evaluar_y_graficar_performance(
@@ -328,3 +470,4 @@ def evaluar_y_graficar_performance(
 
     # --- 5. Devolver DataFrame si quieres seguir usándolo ---
     return df
+

@@ -15,7 +15,8 @@ def readMetadata(sentinel_1_path, toPrint=True):
         Un objeto Product de SNAP que contiene los metadatos del producto Sentinel-1.
     """
     sentinel_1_metadata = "manifest.safe"  # Nombre del archivo de metadatos.
-    s1prd = f"{sentinel_1_path}.SAFE\{sentinel_1_metadata}"  # Ruta completa al archivo de metadatos.
+    s1prd = f"{sentinel_1_path}\{sentinel_1_metadata}"
+    #s1prd = f"{sentinel_1_path}.SAFE\{sentinel_1_metadata}"  # Ruta completa al archivo de metadatos.
     
     # Cargar el lector de productos para Sentinel-1.
     reader = ProductIO.getProductReader("SENTINEL-1")

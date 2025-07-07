@@ -1,0 +1,31 @@
+name: snap
+channels:
+  - conda-forge
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+  - https://repo.anaconda.com/pkgs/msys2
+dependencies:
+  - geopandas
+  - qtconsole
+  - dask
+  - pandas
+  - psycopg2
+  - pymysql
+  - pyodbc
+  - sqlalchemy
+  - cartopy
+  - conda-forge::contextily
+  - fiona
+  - folium
+  - h5py
+  - netcdf4
+  - pyproj
+  - rasterio
+  - rioxarray
+  - shapely
+  - xarray
+  - gdal
+  - scikit-image
+  - seaborn
+  - conda-forge::matplotlib-scalebar
+prefix: C:\Users\c4cfo\anaconda3\envs\snap

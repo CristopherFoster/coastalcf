@@ -24,7 +24,7 @@ from coastalcf.wbplots import histograma_threshold_metrics
 
 # --- 1. Define la región de interés (ROI) para el subconjunto y la ruta del producto.
 # Si no existew substet colocar None
-# x = y = width = height = None
+#x = y = width = height = None
 #Inicio de la región de interés (ROI) en coordenadas de píxeles.
 x=32
 y = 14091
@@ -32,11 +32,12 @@ y = 14091
 width = 1355
 height = 1355#897
 
-x=23
-y = 13524
+#Cuando se usan valores con np se vuelve loco el thrweshold
+#x=23
+#y = 13524
 #Final de la región de interés (ROI) en coordenadas de píxeles.
-width = 1667
-height = 1667
+#width = 1667
+#height = 1667
 
 #x = y = width = height = None
 #23 13524 1667 1617
@@ -125,10 +126,18 @@ print("Calculating texture...")
 textura = clf.glcmOp().glcm(terrain1, para)
 if textura is None:
     raise RuntimeError("GLCM texture calculation failed.")
+
 # Guardar el producto completo, con todas sus bandas
-output_path_terrain = os.path.join(output_directory, "glcm")
+#output_path_terrain = os.path.join(output_directory, "glcm")
 #glcmc = clf.geometricCorrection(textura, toPrint=True)
 #ProductIO.writeProduct(glcmc, output_path_terrain, "GeoTIFF")
+
+
+#7.1 Corrección geométrica: y guardado a numpy
+tmp_tif = os.path.join(output_directory, "glcm_tmp")     # float32
+print(f"Escribiendo GeoTIFF temporal: {tmp_tif}")
+producto_gc = clf.geometricCorrection(textura, toPrint=True)
+vh_numpy = clf.exportar_vh_a_tiff(producto_gc, tmp_tif)
 
 #!!!!!!!!!!!!!!!!!!!!!
 
@@ -138,12 +147,13 @@ output_path_terrain = os.path.join(output_directory, "glcm")
 # 8. Umbralización (Método Sauvola) : waterDetectionBinarization [product]
 print("Performing water detection...")
 #waterDetection = clf.waterDetectionBinarization(textura, sentinel_1_path, output_directory)
-productos_binarios, umbrales = clf.WDBThreshold(
+productos_binarios, umbrales, img_db_valid = clf.WDBThreshold(
     textura=textura,
     sentinel_1_path=sentinel_1_path,
     window_size=31,
     k=0.2,     # extra param para Niblack/Sauvola
-    r=None     # extra param para Sauvola
+    r=None,     # extra param para Sauvola
+    output_dir= output_directory
 )
 
 productos_para_graficar = {
@@ -151,36 +161,27 @@ productos_para_graficar = {
     "flood_niblack": (productos_binarios["flood_niblack"], umbrales["niblack"]),
     "flood_sauvola": (productos_binarios["flood_sauvola"], umbrales["sauvola"]),
     "flood_li": (productos_binarios["flood_li"], umbrales["li"]),
+    "flood_li_iter": (productos_binarios["flood_li_iter"], umbrales["li_iterativo"]),
 }
 #**************************************************************************
 #**************************************************************************
 #**************************************************************************
 # 8.5
 #band_names = ["flood_otsu", "flood_niblack", "flood_sauvola", "flood_li"]
-producto_gc = clf.geometricCorrection(textura, toPrint=True)
-
-tmp_tif   = os.path.join(output_directory, "glcm_tmp.tif")     # float32
+"""
 final_tif = os.path.join(output_directory, "glcm_8bit.tif")    # uint8
 final_shp = os.path.join(output_directory, "glcm.shp")
 # --- 2 · Exportar el Product corregido a GeoTIFF (float) ---
-print(f"Escribiendo GeoTIFF temporal: {tmp_tif}")
-clf.replace_nodata_with_minus1(producto_gc, output_path_terrain)
-
-
-
+tmp_tif= tmp_tif  + ".tif"
 # --- 3 · Convertir a 8 bits con tu propia función ---
-convert_to_8bit_gdal(tmp_tif, final_tif, nodata_val=-1)
+convert_to_8bit_gdal(producto_gc, final_tif, nodata_val=-1)
 print(f"GeoTIFF 8 bits escrito: {final_tif}")
-
 # --- 4 · Borrar el temporal (opcional) ---
 os.remove(tmp_tif)
-
 # --- 5 · Vectorizar a shapefile (opcional) ---
-
-exportar_raster_y_shapefile(producto_gc, raster_path=final_tif, shapefile_path=final_shp)
-
+#exportar_raster_y_shapefile(final_tif, raster_path=final_tif, shapefile_path=final_shp)
 print("Proceso terminado ✔️")
-
+"""
 
 
 #**************************************************************************
@@ -201,13 +202,20 @@ for nombre, (producto, threshold) in productos_para_graficar.items():
     else:
         productos_binarios_corrected[nombre] = (corregido, threshold)
 
+img_db_product = clf.geometricCorrection(img_db_valid, toPrint=True)
 
 
+# 10. Visualización en grid de productos corregidosprint("\nCreando producto SNAP para img_db_valid...")
 
-
-# 10. Visualización en grid de productos corregidos
 from coastalcf.wbplots import aplicar_correccion_y_grid
-aplicar_correccion_y_grid(productos_binarios_corrected, output_directory, sentinel_id)
+#aplicar_correccion_y_grid(productos_binarios_corrected, output_directory, sentinel_id)
+aplicar_correccion_y_grid(
+    productos_binarios=productos_binarios_corrected, 
+    output_directory=output_directory,
+    sentinel_id="S1_20240425",
+    img_db_product=img_db_product,  # <- tu imagen VH ya en dB
+    vh_extent=[-106.55369857412863, -106.3986493560896, 23.129450805873237, 23.274798218843774]  # <- opcional si quieres respetar georeferencia
+)
 
 
 
@@ -220,46 +228,3 @@ aplicar_correccion_y_grid(productos_binarios_corrected, output_directory, sentin
 
 
 
-
-"""
-##---------------------------------------
-# 1) Abrir el GeoTIFF en modo solo-lectura
-tif_path = final_tif
-ds = gdal.Open(tif_path, gdal.GA_ReadOnly)
-band = ds.GetRasterBand(1)
-
-# 2) Leer la banda a un array float32
-glcm = band.ReadAsArray().astype(np.float32)
-
-# 3) Manejar NoData → NaN
-nodata = band.GetNoDataValue()      # debería devolver -9999.0
-if nodata is not None:
-    glcm[glcm == nodata] = np.nan   # así tu histograma ignora nodata
-
-# 4) ¡Listo!  →  Llamar a la función
-thresholds, scores = histograma_threshold_metrics(glcm)
-#---------------------------------------------------------
-    
-for nombre, producto in productos_binarios_corrected.items():
-    # Generar sufijos personalizados para cada nombre de producto
-    suffix_base = f"_{nombre}_corrected"
-
-    # Generar rutas de salida usando tus funciones reutilizables
-    raster_path = clf.generate_raster_path(sentinel_1_path, output_directory)
-    shapefile_path = clf.generate_shapefile_path(sentinel_1_path, output_directory)
-
-    print(f"Procesando producto corregido: {nombre}")
-    
-    # Exportar raster y shapefile
-    #clf.exportar_raster_y_shapefile(producto, raster_path, shapefile_path)
-"""
-
-
-"""
-for nombre, producto in productos_binarios_corrected.items():
-    output_path = os.path.join(output_directory, f"{sentinel_id}_{nombre}_corrected.tif")  
-    shape_path = os.path.join(output_directory, f"{sentinel_id}_{nombre}_corrected.shp")  
-    print(f"Guardando producto corregido: {output_path}")
-    #ProductIO.writeProduct(producto, output_path, "GeoTIFF")  # o "GeoTIFF" si prefieres tif
-"""
-#extent=[-106.52, -106.41, 23.17, 23.27]
