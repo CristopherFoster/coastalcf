@@ -45,16 +45,16 @@ output_directory = r'C:\Users\c4cfo\OneDrive\CENTROGEO-cfoster\1_ENSOCE\threshol
 ---------------------------------------------------------------------------
 """
 # --- 1. Lectura de metadatos del producto Sentinel-1 ---
-product = clf.readMetadata(sentinel_1_path, toPrint=True)  
+product = clf.a_lectura_metadata(sentinel_1_path, toPrint=True)  
 
 # --- 2. Eliminación de ruido térmico : do_thermal_noise_removal [output]---
-thermaremoved = clf.do_thermal_noise_removal(product)
+thermaremoved = clf.b_ruido_termico(product)
 if thermaremoved is None:
     raise RuntimeError("Thermal noise removal failed.")
 print(f"Bands after ThermalNoiseRemoval: {list(thermaremoved.getBandNames())}")
 #**************************************************************************
 # --- 3. Calibración radiométrica : radiometricCalibration [calibrated] ---
-calibrate = clf.radiometricCalibration(thermaremoved)
+calibrate = clf.c_calibracion_radiometrica(thermaremoved)
 if calibrate is None:
     raise RuntimeError("Radiometric calibration failed.")
 print(f"Bands after RadiometricCalibration: {list(calibrate.getBandNames())}")
@@ -70,7 +70,7 @@ if not subset_bands:
 # ---
 # --- Paso 3.1: Crear el subset después de calibrar ---
 
-subset_product = clf.subset(calibrate, x, y, width, height, subset_bands)
+subset_product = clf.d_submuestreo(calibrate, x, y, width, height, subset_bands)
 
 # - Validar subset antes de continuar
 if subset_product is None or subset_product.getSceneRasterWidth() == 0 or subset_product.getSceneRasterHeight() == 0:
@@ -82,13 +82,13 @@ print(subset_product.getMetadataRoot().toString())
 # --- 4. Aplicación de multilooking : perform_multilook [multilook]
 print("Performing multilooking...")
 #multilook = perform_multilook(calibrate)
-multilook = clf.perform_multilook(subset_product)
+multilook = clf.e_operador_multilook(subset_product)
 if multilook is None:
     raise RuntimeError("Multilooking failed.")
 #**************************************************************************
 # --- 5. Filtrado de speckle : speckleFiltering [speckle]
 print("Applying speckle filtering...")
-speckle = clf.speckleFiltering(multilook, toPrint=True)
+speckle = clf.f_filtro_speckle(multilook, toPrint=True)
 if speckle is None:
     raise RuntimeError("Speckle filtering failed.")
 
@@ -96,7 +96,7 @@ if speckle is None:
 #**************************************************************************
 # --- 6. Nivelación del terreno (Terrain Flattening) : perform_terrain_flattening [terrain]
 print("Applying terrain flattening...")
-terrain1 = clf.perform_terrain_flattening(speckle)
+terrain1 = clf.g_nivelacion_terreno(speckle)
 if terrain1 is None:
     raise RuntimeError("Terrain flattening failed.")
 
@@ -106,12 +106,12 @@ ProductIO.writeProduct(terrain1, output_path_terrain, "GeoTIFF")
 #**************************************************************************
 # --- 7. Cálculo de texturas GLCM : glcmOp / glcm [textura]
 print("Calculating texture...")
-textura = clf.glcmOp().glcm(terrain1, para)
+textura = clf.h_glcm().glcm(terrain1, para)
 if textura is None:
     raise RuntimeError("GLCM texture calculation failed.")
 # Guardar el producto completo, con todas sus bandas
 output_path_terrain = os.path.join(output_directory, "glcm")
-glcmc = clf.geometricCorrection(textura, toPrint=True)
+glcmc = clf.j_correcion_geometrica(textura, toPrint=True)
 ProductIO.writeProduct(glcmc, output_path_terrain, "GeoTIFF")
 
 #**************************************************************************
@@ -121,7 +121,7 @@ print("Performing water detection...")
 #waterDetection = clf.waterDetectionBinarization(textura, sentinel_1_path, output_directory)
 
 # Llamamos a la misma función con distinto método:
-flood_sauvola = clf.waterDetectionBinarization(
+flood_sauvola = clf.z_waterDetectionBinarization(
     textura, 
     sentinel_1_path, 
     output_directory, 
@@ -160,7 +160,7 @@ if flood_sauvola is None:
 
 # 9. Corrección geométrica (Terrain DEM): geometricCorrection [corrected]
 print("Applying terrain correction...")
-terrain = clf.geometricCorrection(flood_sauvola, toPrint=True)
+terrain = clf.j_correcion_geometrica(flood_sauvola, toPrint=True)
 if terrain is None:
     raise RuntimeError("Geometric correction failed.")
 
@@ -171,12 +171,12 @@ if terrain is None:
 
 
 # --- 10. Creación de rutas para archivos
-raster_path = clf.generate_raster_path(sentinel_1_path, output_directory)
-shapefile_path = clf.generate_shapefile_path(sentinel_1_path, output_directory)
+raster_path = clf.l_raster_a_shapefile(sentinel_1_path, output_directory)
+shapefile_path = clf.m_suavizar_shapefile(sentinel_1_path, output_directory)
 
 print(f"Ruta del raster: {raster_path}")
 print(f"Ruta del shapefile: {shapefile_path}")
 
 # ---  11. Exportar archivo como Raster y Shapefile 
 print("Exportando raster y shapefile...")
-clf.exportar_raster_y_shapefile(terrain, raster_path, shapefile_path)
+clf.h_exportar_sentinel1(terrain, raster_path, shapefile_path)

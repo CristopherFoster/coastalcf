@@ -39,7 +39,7 @@ para = {'sourceBands': 'VH'}
 # Path del Producto de Sentinel 1 y ouput de archivos.
 
 sentinel_1_path = r'C:\Users\c4cfo\OneDrive\CENTROGEO-cfoster\1_ENSOCE\C2_Data\2023\S1A_IW_GRDH_1SDV_20230607T130609_20230607T130634_048880_05E0CE_1909'
-sentinel_id = clf.get_sentinel_fecha_id(sentinel_1_path)
+sentinel_id = clf.a_sentinel1_id(sentinel_1_path)
 output_directory = r'C:\Users\c4cfo\OneDrive\CENTROGEO-cfoster\1_ENSOCE\thresholdmzt\6_junio'
 output_directorysh = r'C:\Users\c4cfo\OneDrive\CENTROGEO-cfoster\1_ENSOCE\thresholdmzt\6_junio\shape'
 
@@ -54,16 +54,16 @@ output_directorysh = r'C:\Users\c4cfo\OneDrive\CENTROGEO-cfoster\1_ENSOCE\thresh
 ---------------------------------------------------------------------------
 """
 # --- 1. Lectura de metadatos del producto Sentinel-1 ---
-product = clf.readMetadata(sentinel_1_path, toPrint=True)  
+product = clf.a_lectura_metadata(sentinel_1_path, toPrint=True)  
 
 # --- 2. Eliminación de ruido térmico : do_thermal_noise_removal [output]---
-thermaremoved = clf.do_thermal_noise_removal(product)
+thermaremoved = clf.b_ruido_termico(product)
 if thermaremoved is None:
     raise RuntimeError("Thermal noise removal failed.")
 print(f"Bands after ThermalNoiseRemoval: {list(thermaremoved.getBandNames())}")
 #**************************************************************************
 # --- 3. Calibración radiométrica : radiometricCalibration [calibrated] ---
-calibrate = clf.radiometricCalibration(thermaremoved)
+calibrate = clf.c_calibracion_radiometrica(thermaremoved)
 if calibrate is None:
     raise RuntimeError("Radiometric calibration failed.")
 print(f"Bands after RadiometricCalibration: {list(calibrate.getBandNames())}")
@@ -79,7 +79,7 @@ if not subset_bands:
 # ---
 # --- Paso 3.1: Crear el subset después de calibrar ---
 
-subset_product = clf.subset(calibrate, x, y, width, height, subset_bands)
+subset_product = clf.d_submuestreo(calibrate, x, y, width, height, subset_bands)
 
 # - Validar subset antes de continuar
 if subset_product is None or subset_product.getSceneRasterWidth() == 0 or subset_product.getSceneRasterHeight() == 0:
@@ -91,13 +91,13 @@ print(subset_product.getMetadataRoot().toString())
 # --- 4. Aplicación de multilooking : perform_multilook [multilook]
 print("Performing multilooking...")
 #multilook = perform_multilook(calibrate)
-multilook = clf.perform_multilook(subset_product)
+multilook = clf.e_operador_multilook(subset_product)
 if multilook is None:
     raise RuntimeError("Multilooking failed.")
 #**************************************************************************
 # --- 5. Filtrado de speckle : speckleFiltering [speckle]
 print("Applying speckle filtering...")
-speckle = clf.speckleFiltering(multilook, toPrint=True)
+speckle = clf.f_filtro_speckle(multilook, toPrint=True)
 if speckle is None:
     raise RuntimeError("Speckle filtering failed.")
 
@@ -105,7 +105,7 @@ if speckle is None:
 #**************************************************************************
 # --- 6. Nivelación del terreno (Terrain Flattening) : perform_terrain_flattening [terrain]
 print("Applying terrain flattening...")
-terrain1 = clf.perform_terrain_flattening(speckle)
+terrain1 = clf.g_nivelacion_terreno(speckle)
 if terrain1 is None:
     raise RuntimeError("Terrain flattening failed.")
 
@@ -115,13 +115,13 @@ if terrain1 is None:
 #******************x********************************************************
 # --- 7. Cálculo de texturas GLCM : glcmOp / glcm [textura]
 print("Calculating texture...")
-textura = clf.glcmOp().glcm(terrain1, para)
+textura = clf.h_glcm().glcm(terrain1, para)
 if textura is None:
     raise RuntimeError("GLCM texture calculation failed.")
 
 # Guardar el producto completo, con todas sus bandas
 output_path_terrain = os.path.join(output_directory, "glcm")
-glcmc = clf.geometricCorrection(textura, toPrint=True)
+glcmc = clf.j_correcion_geometrica(textura, toPrint=True)
 ProductIO.writeProduct(glcmc, output_path_terrain, "GeoTIFF")
 #!!!!!!!!!!!!!!!!!!!!!
 #**************************************************************************
@@ -129,7 +129,7 @@ ProductIO.writeProduct(glcmc, output_path_terrain, "GeoTIFF")
 # 8. Umbralización (Método Sauvola) : waterDetectionBinarization [product]
 print("Performing water detection...")
 #waterDetection = clf.waterDetectionBinarization(textura, sentinel_1_path, output_directory)
-productos_binarios, umbrales = clf.WDBThreshold(
+productos_binarios, umbrales = clf.i_binarizacion(
     textura=textura,
     sentinel_1_path=sentinel_1_path,
     window_size=31,
@@ -154,7 +154,7 @@ print("Applying terrain correction to all thresholded products...")
 productos_binarios_corrected = {}
 for nombre, (producto, threshold) in productos_para_graficar.items():
     print(f" -> Corrigiendo: {nombre}")
-    corregido = clf.geometricCorrection(producto, toPrint=True)
+    corregido = clf.j_correcion_geometrica(producto, toPrint=True)
     if corregido is None:
         print(f"⚠️  No se pudo corregir el producto: {nombre}")
     else:
@@ -163,7 +163,7 @@ for nombre, (producto, threshold) in productos_para_graficar.items():
 
 
 # 10. Visualización en grid de productos corregidos
-from coastalcf.wbplots import aplicar_correccion_y_grid
+from coastalcf.n_lineabase_dsas import aplicar_correccion_y_grid
 aplicar_correccion_y_grid(productos_binarios_corrected, output_directory, sentinel_id)
 
 
@@ -173,13 +173,13 @@ for nombre, producto in productos_binarios_corrected.items():
     suffix_base = f"_{nombre}_corrected"
 
     # Generar rutas de salida usando tus funciones reutilizables
-    raster_path = clf.generate_raster_path(sentinel_1_path, output_directory)
-    shapefile_path = clf.generate_shapefile_path(sentinel_1_path, output_directorysh)
+    raster_path = clf.l_raster_a_shapefile(sentinel_1_path, output_directory)
+    shapefile_path = clf.m_suavizar_shapefile(sentinel_1_path, output_directorysh)
 
     print(f"Procesando producto corregido: {nombre}")
     
     # Exportar raster y shapefile
-    clf.exportar_raster_y_shapefile(producto, raster_path, shapefile_path)
+    clf.h_exportar_sentinel1(producto, raster_path, shapefile_path)
 
 
 """
