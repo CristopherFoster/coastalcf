@@ -23,7 +23,7 @@ Este repositorio contiene un ejemplo completo de procesamiento de imágenes Sent
 11. Exportación del raster y shapefile final
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/d42e1b0d-32a4-4cd2-aea7-4b60d0e23ff3" alt="image" />
+  <img width="9696" height="1147" alt="Análisis ENSO 2023-2024 (14)" src="https://github.com/user-attachments/assets/2d592c57-b4f3-4339-8ea0-80b0034fa222" />
 </p>
 
 ## Módulos principales
