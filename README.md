@@ -32,25 +32,25 @@ La funcionalidad se organiza en los siguientes métodos disponibles en el paquet
 
 ```python
 __all__ = [
-    "readMetadata",
-    "do_thermal_noise_removal",
-    "radiometricCalibration",
-    "subset",
-    "perform_multilook",
-    "speckleFiltering",
-    "perform_terrain_flattening",
-    "glcmOp",
-    "waterDetectionBinarization",
-    "geometricCorrection",
-    "generate_raster_path",
-    "generate_shapefile_path",
-    "exportar_raster_y_shapefile",
-    "get_sentinel_fecha_id",
-    "plot_binary_map",
-    "plot_histogram",
-    "plot_thresholds",
-    "WDBThreshold"
+    "a_sentinel1_id",
+    "a_lectura_metadata",
+    "b_ruido_termico",
+    "c_calibracion_radiometrica",
+    "d_submuestreo",
+    "e_operador_multilook",
+    "f_filtro_speckle",
+    "g_nivelacion_terreno",
+    "h_glcm",
+    "h_exportar_sentinel1",
+    "i_binarizacion",
+    "j_correcion_geometrica",
+    "k_graficos_binarizacion",
+    "l_raster_a_shapefile",
+    "m_suavizar_shapefile",
+    "n_lineabase_dsas",
+    "o_limpieza_lineacosta",
 ]
+
 ```
 
 ## Referencias y créditos
